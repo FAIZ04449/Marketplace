@@ -102,13 +102,13 @@ const OwnerDashboard = ({ onClose }) => {
                                         ) : (
                                             orders.map(order => (
                                                 <tr key={order.id}>
-                                                    <td className="code-cell">{order.pickupCode}</td>
-                                                    <td>{order.user.name} ({order.user.room})</td>
+                                                    <td className="code-cell">{order.pickup_code}</td>
+                                                    <td>{order.user_name} ({order.user_room})</td>
                                                     <td>₹{order.total}</td>
                                                     <td>
                                                         {order.items.map(i => `${i.name} (${i.quantity})`).join(', ')}
                                                     </td>
-                                                    <td>{order.date}</td>
+                                                    <td>{new Date(order.created_at).toLocaleString()}</td>
                                                 </tr>
                                             ))
                                         )}

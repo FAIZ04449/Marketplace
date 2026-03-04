@@ -13,13 +13,15 @@ const CartOverlay = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
-    const handleCheckout = (e) => {
+    const handleCheckout = async (e) => {
         e.preventDefault();
         if (!address.room || !address.phone) return alert('Please fill all details');
 
-        const order = placeOrder({ ...user, ...address });
-        setLastOrder(order);
-        setCheckoutStep(3);
+        const order = await placeOrder({ ...user, ...address });
+        if (order) {
+            setLastOrder(order);
+            setCheckoutStep(3);
+        }
     };
 
     const closeCart = () => {
@@ -128,7 +130,7 @@ const CartOverlay = ({ isOpen, onClose }) => {
                         <div className="success-icon">🎫</div>
                         <h3>Your Pickup Code</h3>
                         <div className="pickup-code-display">
-                            {lastOrder?.pickupCode}
+                            {lastOrder?.pickup_code}
                         </div>
                         <p>Go to <strong>Room 7A- 289</strong> and show this code to collect your snacks.</p>
                         <p className="sub">Please pay your bill at the room.</p>

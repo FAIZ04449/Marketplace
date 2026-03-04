@@ -4,21 +4,29 @@ import { useProducts } from '../context/ProductContext';
 import './ProductList.css';
 
 const ProductList = ({ searchQuery }) => {
-    const { products } = useProducts();
+    const { products, loading } = useProducts();
     const [filteredProducts, setFilteredProducts] = useState(products);
 
     useEffect(() => {
-        let result = products;
+        if (!loading) {
+            let result = products;
 
-        if (searchQuery) {
-            result = result.filter(p =>
-                p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                p.category.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            if (searchQuery) {
+                result = result.filter(p =>
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.category.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+
+            setFilteredProducts(result);
         }
+    }, [searchQuery, products, loading]);
 
-        setFilteredProducts(result);
-    }, [searchQuery, products]);
+    if (loading) return (
+        <div style={{ textAlign: 'center', padding: '100px 0', opacity: 0.6 }}>
+            <h3>✨ Fetching freshest snacks...</h3>
+        </div>
+    );
 
     return (
         <section className="product-list-section">
