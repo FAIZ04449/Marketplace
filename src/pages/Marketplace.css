@@ -1,0 +1,42 @@
+.marketplace-layout {
+    min-height: 100vh;
+    background-color: var(--white);
+}
+
+.main-content {
+    padding-top: 100px;
+    /* Offset for fixed header */
+    padding-bottom: var(--spacing-xl);
+}
+
+.admin-fab {
+    position: fixed;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
+    width: 60px;
+    height: 60px;
+    background: var(--secondary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-lg);
+    transition: var(--transition-fast);
+    z-index: 99;
+}
+
+.admin-fab:hover {
+    transform: scale(1.1);
+}
+
+.loading-screen {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
