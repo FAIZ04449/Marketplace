@@ -49,20 +49,24 @@ export const ProductProvider = ({ children }) => {
     useEffect(() => {
         fetchProducts(true);
 
-        // REAL-TIME: Using a more robust channel and listener
-        const subscription = supabase
-            .channel('realtime_products')
+        console.log('🔌 Initializing Product Realtime...');
+
+        const channel = supabase
+            .channel('products-db-changes')
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'products' },
-                () => {
-                    console.log('🔄 Product sync triggered');
-                    fetchProducts(false); // Silent update
+                (payload) => {
+                    console.log('🔔 Product Change Detected:', payload.eventType);
+                    fetchProducts(false);
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log('📡 Product Subscription Status:', status);
+            });
 
         return () => {
-            supabase.removeChannel(subscription);
+            console.log('🔌 Cleaning up Product Realtime...');
+            supabase.removeChannel(channel);
         };
     }, []);
 

@@ -30,20 +30,27 @@ export const CartProvider = ({ children }) => {
     useEffect(() => {
         fetchOrders(true);
 
-        // Realtime subscription for orders
-        const subscription = supabase
-            .channel('realtime_orders')
+        console.log('🔌 Initializing Order Realtime...');
+
+        const channel = supabase
+            .channel('orders-db-changes')
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'orders' },
-                () => {
-                    console.log('Real-time order update detected');
-                    fetchOrders(false); // Silent update
+                (payload) => {
+                    console.log('🔔 Order Change Detected:', payload.eventType);
+                    fetchOrders(false);
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log('📡 Order Subscription Status:', status);
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('❌ Realtime connection failed. Try refreshing the page.');
+                }
+            });
 
         return () => {
-            supabase.removeChannel(subscription);
+            console.log('🔌 Cleaning up Order Realtime...');
+            supabase.removeChannel(channel);
         };
     }, []);
 
