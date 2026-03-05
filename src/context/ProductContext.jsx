@@ -7,7 +7,6 @@ const ProductContext = createContext();
 export const ProductProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [hasRealProducts, setHasRealProducts] = useState(false);
 
     // 1. Fetch products from Supabase
     const fetchProducts = async (isInitial = false) => {
@@ -18,26 +17,30 @@ export const ProductProvider = ({ children }) => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase fetch error:', error);
+                throw error;
+            }
 
             if (data && data.length > 0) {
                 setProducts(data);
-                setHasRealProducts(true);
-                // Save to local storage to remember that we have real data
-                localStorage.setItem('has_real_products', 'true');
+                // Permanent suppression of mocks once data is found
+                localStorage.setItem('hide_mocks', 'true');
             } else {
-                // If there's no real data, check if we should show mocks
-                const wasInitialized = localStorage.getItem('has_real_products') === 'true';
-                if (!wasInitialized) {
+                // Check if we should still show mocks
+                const hideMocks = localStorage.getItem('hide_mocks') === 'true';
+                if (!hideMocks) {
                     setProducts(MOCK_PRODUCTS);
                 } else {
                     setProducts([]); // Truly empty store
                 }
             }
         } catch (error) {
-            console.error('Error fetching products from Supabase:', error.message);
-            // Fallback to mocks only on catastrophic failure during initial load
-            if (isInitial && products.length === 0) setProducts(MOCK_PRODUCTS);
+            console.error('Error fetching products:', error.message);
+            // Fallback to mocks ONLY if we have absolutely nothing and haven't hidden them
+            if (products.length === 0 && localStorage.getItem('hide_mocks') !== 'true') {
+                setProducts(MOCK_PRODUCTS);
+            }
         } finally {
             if (isInitial) setLoading(false);
         }
@@ -52,7 +55,7 @@ export const ProductProvider = ({ children }) => {
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'products' },
                 () => {
-                    console.log('Real-time product update detected');
+                    console.log('🔄 Product sync triggered');
                     fetchProducts(false); // Silent update
                 }
             )
@@ -70,10 +73,11 @@ export const ProductProvider = ({ children }) => {
                 .insert([newProduct]);
 
             if (error) throw error;
-            // Real-time hook will trigger fetchProducts(false)
+            // Immediate local update for better UX before realtime kicks in
+            localStorage.setItem('hide_mocks', 'true');
         } catch (error) {
-            console.error('Add failed:', error.message);
-            alert('Error adding product: ' + error.message);
+            console.error('Add product failed:', error.message);
+            alert('Add failed: ' + error.message);
         }
     };
 
@@ -82,10 +86,11 @@ export const ProductProvider = ({ children }) => {
         const product = products.find(p => p.id === productId);
         if (!product) return;
 
-        // Mock products have numeric IDs from 1 to 10
-        const isMock = typeof productId === 'number' && productId <= 10;
+        // REAL product detection: check if it came from Supabase (has created_at)
+        const isReal = !!product.created_at;
 
-        if (isMock) {
+        if (!isReal) {
+            // Update local mock state
             setProducts(prev => prev.map(p =>
                 p.id === productId ? { ...p, stock: Math.max(0, p.stock - quantitySold) } : p
             ));
@@ -104,9 +109,12 @@ export const ProductProvider = ({ children }) => {
     };
 
     const deleteProduct = async (id) => {
-        const isMock = typeof id === 'number' && id <= 10;
+        const product = products.find(p => p.id === id);
+        if (!product) return;
 
-        if (isMock) {
+        const isReal = !!product.created_at;
+
+        if (!isReal) {
             setProducts(prev => prev.filter(p => p.id !== id));
             return;
         }
@@ -120,7 +128,7 @@ export const ProductProvider = ({ children }) => {
             if (error) throw error;
         } catch (error) {
             console.error('Delete failed:', error.message);
-            alert('Error deleting product: ' + error.message);
+            alert('Delete failed: ' + error.message);
         }
     };
 

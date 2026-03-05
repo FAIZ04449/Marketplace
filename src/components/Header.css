@@ -105,12 +105,53 @@
 }
 
 @media (max-width: 768px) {
+    .main-header {
+        height: 60px;
+    }
+
     .header-inner {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: auto 1fr auto;
+        gap: var(--spacing-sm);
+    }
+
+    .brand h1 {
+        font-size: 1.1rem;
+        margin-right: var(--spacing-xs);
+    }
+
+    .location-picker {
+        border-left: 1px solid var(--border-color);
+        padding-left: var(--spacing-xs);
+    }
+
+    .location-label {
+        font-size: 0.6rem;
+    }
+
+    .location-value {
+        font-size: 0.75rem;
+        max-width: 100px;
     }
 
     .search-section {
         display: none;
-        /* Mobile will have a different search flow usually, but for now just hide */
+    }
+
+    .header-nav {
+        gap: var(--spacing-sm);
+    }
+
+    .nav-text {
+        display: none;
+    }
+
+    .nav-item {
+        padding: 6px 10px;
+        background: var(--bg-light);
+        border-radius: var(--radius-md);
+    }
+
+    .nav-icon {
+        font-size: 1.1rem;
     }
 }

@@ -41,10 +41,11 @@ const OwnerDashboard = ({ onClose }) => {
         setImage(null);
     };
 
-    const totalSales = orders.reduce((acc, order) => acc + order.total, 0);
-    const totalUnits = orders.reduce((acc, order) =>
-        acc + order.items.reduce((sum, item) => sum + item.quantity, 0), 0
-    );
+    const totalSales = orders.reduce((acc, order) => acc + (Number(order.total) || 0), 0);
+    const totalUnits = orders.reduce((acc, order) => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        return acc + items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    }, 0);
 
     return (
         <div className="admin-overlay">
@@ -69,7 +70,7 @@ const OwnerDashboard = ({ onClose }) => {
                         <div className="admin-stats">
                             <div className="stat-card">
                                 <span className="stat-label">Total Revenue</span>
-                                <span className="stat-value">₹{totalSales}</span>
+                                <span className="stat-value">₹{totalSales.toFixed(2)}</span>
                             </div>
                             <div className="stat-card">
                                 <span className="stat-label">Units Sold</span>
@@ -97,18 +98,29 @@ const OwnerDashboard = ({ onClose }) => {
                                     <tbody>
                                         {orders.length === 0 ? (
                                             <tr>
-                                                <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>No transactions yet</td>
+                                                <td colSpan="5" style={{ textAlign: 'center', padding: '40px', opacity: 0.5 }}>
+                                                    <p>No transactions found in database.</p>
+                                                    <p style={{ fontSize: '0.8rem' }}>Check if RLS and Realtime are enabled.</p>
+                                                </td>
                                             </tr>
                                         ) : (
                                             orders.map(order => (
                                                 <tr key={order.id}>
-                                                    <td className="code-cell">{order.pickup_code}</td>
-                                                    <td>{order.user_name} ({order.user_room})</td>
-                                                    <td>₹{order.total}</td>
+                                                    <td className="code-cell">{order.pickup_code || 'N/A'}</td>
                                                     <td>
-                                                        {order.items.map(i => `${i.name} (${i.quantity})`).join(', ')}
+                                                        <strong>{order.user_name || 'Anonymous'}</strong>
+                                                        <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>{order.user_room}</div>
                                                     </td>
-                                                    <td>{new Date(order.created_at).toLocaleString()}</td>
+                                                    <td>₹{Number(order.total || 0).toFixed(2)}</td>
+                                                    <td style={{ fontSize: '0.85rem' }}>
+                                                        {Array.isArray(order.items)
+                                                            ? order.items.map(i => `${i.name} (${i.quantity})`).join(', ')
+                                                            : 'Error loading items'
+                                                        }
+                                                    </td>
+                                                    <td style={{ fontSize: '0.8rem' }}>
+                                                        {order.created_at ? new Date(order.created_at).toLocaleString() : 'Just now'}
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}
