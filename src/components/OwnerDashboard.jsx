@@ -5,7 +5,7 @@ import { CATEGORIES } from '../utils/mockData';
 import './OwnerDashboard.css';
 
 const OwnerDashboard = ({ onClose }) => {
-    const { orders } = useCart();
+    const { orders, refreshOrders } = useCart();
     const { products, addProduct, deleteProduct } = useProducts();
     const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'inventory'
 
@@ -62,7 +62,18 @@ const OwnerDashboard = ({ onClose }) => {
                             onClick={() => setActiveTab('inventory')}
                         >Inventory</button>
                     </div>
-                    <button className="close-btn" onClick={onClose}>✕</button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            className="refresh-btn"
+                            onClick={() => {
+                                console.log('Manual refresh triggered');
+                                refreshOrders();
+                            }}
+                            style={{ padding: '8px', borderRadius: '50%', background: 'var(--bg-light)', border: 'none', cursor: 'pointer' }}
+                            title="Refresh Data"
+                        >🔄</button>
+                        <button className="close-btn" onClick={onClose}>✕</button>
+                    </div>
                 </div>
 
                 {activeTab === 'stats' ? (
