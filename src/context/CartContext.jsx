@@ -17,7 +17,7 @@ export const CartProvider = ({ children }) => {
             try {
                 const { data, error } = await supabase
                     .from('orders')
-                    .select('*')
+                    .select('id, created_at, user_name, user_email, user_room, items, total, pickup_code')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;

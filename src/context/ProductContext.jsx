@@ -17,7 +17,7 @@ export const ProductProvider = ({ children }) => {
             try {
                 const { data, error } = await supabase
                     .from('products')
-                    .select('*')
+                    .select('id, created_at, name, price, category, stock')
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
