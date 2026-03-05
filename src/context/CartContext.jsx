@@ -10,7 +10,7 @@ export const CartProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     // 1. Fetch orders from Supabase
-    const fetchOrders = async (isInitial = false) => {
+    const fetchOrders = async (isInitial = false, retries = 3) => {
         try {
             if (isInitial) setLoading(true);
             const { data, error } = await supabase
@@ -18,7 +18,13 @@ export const CartProvider = ({ children }) => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                if (retries > 0) {
+                    console.warn(`Fetch orders failed, retrying... (${retries} left)`);
+                    return setTimeout(() => fetchOrders(false, retries - 1), 1000);
+                }
+                throw error;
+            }
             setOrders(data || []);
         } catch (error) {
             console.error('Error fetching orders from Supabase:', error.message);
@@ -87,11 +93,14 @@ export const CartProvider = ({ children }) => {
         const pickupCode = Math.floor(1000 + Math.random() * 9000).toString();
 
         try {
+            // OPTIMIZATION: Remove large image data from order items to prevent database timeouts
+            const optimizedItems = cartItems.map(({ image, ...rest }) => rest);
+
             const newOrderData = {
                 user_name: userDetails.name,
                 user_email: userDetails.email,
                 user_room: userDetails.room || 'N/A',
-                items: cartItems,
+                items: optimizedItems,
                 total: totalAmount,
                 pickup_code: pickupCode
             };

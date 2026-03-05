@@ -14,18 +14,49 @@ const OwnerDashboard = ({ onClose }) => {
     const [image, setImage] = useState(null);
     const fileInputRef = useRef(null);
 
+    const compressImage = (base64Str, maxWidth = 400, maxHeight = 400) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress to 70% quality
+            };
+        });
+    };
+
     const handleCapture = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setImage(reader.result);
+            reader.onloadend = async () => {
+                const compressed = await compressImage(reader.result);
+                setImage(compressed);
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSubmitProduct = (e) => {
+    const handleSubmitProduct = async (e) => {
         e.preventDefault();
         if (!image) return alert('Please capture a product image!');
 

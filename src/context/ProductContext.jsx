@@ -9,7 +9,7 @@ export const ProductProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     // 1. Fetch products from Supabase
-    const fetchProducts = async (isInitial = false) => {
+    const fetchProducts = async (isInitial = false, retries = 3) => {
         try {
             if (isInitial) setLoading(true);
             const { data, error } = await supabase
@@ -18,6 +18,10 @@ export const ProductProvider = ({ children }) => {
                 .order('created_at', { ascending: false });
 
             if (error) {
+                if (retries > 0) {
+                    console.warn(`Fetch products failed, retrying... (${retries} left)`);
+                    return setTimeout(() => fetchProducts(false, retries - 1), 1000);
+                }
                 console.error('Supabase fetch error:', error);
                 throw error;
             }
