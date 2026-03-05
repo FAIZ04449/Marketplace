@@ -10,27 +10,29 @@ export const CartProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     // 1. Fetch orders from Supabase
-    const fetchOrders = async (isInitial = false, retries = 3) => {
-        try {
-            if (isInitial) setLoading(true);
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .order('created_at', { ascending: false });
+    const fetchOrders = async (isInitial = false) => {
+        if (isInitial) setLoading(true);
 
-            if (error) {
-                if (retries > 0) {
-                    console.warn(`Fetch orders failed, retrying... (${retries} left)`);
-                    return setTimeout(() => fetchOrders(false, retries - 1), 1000);
+        const tryFetch = async (retriesLeft) => {
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                setOrders(data || []);
+            } catch (error) {
+                console.error(`Fetch orders failed (${retriesLeft} retries left):`, error.message);
+                if (retriesLeft > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return tryFetch(retriesLeft - 1);
                 }
-                throw error;
             }
-            setOrders(data || []);
-        } catch (error) {
-            console.error('Error fetching orders from Supabase:', error.message);
-        } finally {
-            if (isInitial) setLoading(false);
-        }
+        };
+
+        await tryFetch(3);
+        if (isInitial) setLoading(false);
     };
 
     useEffect(() => {

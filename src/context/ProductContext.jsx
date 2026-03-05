@@ -9,45 +9,45 @@ export const ProductProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     // 1. Fetch products from Supabase
-    const fetchProducts = async (isInitial = false, retries = 3) => {
-        try {
-            if (isInitial) setLoading(true);
-            const { data, error } = await supabase
-                .from('products')
-                .select('*')
-                .order('created_at', { ascending: false });
+    // 1. Fetch products from Supabase
+    const fetchProducts = async (isInitial = false) => {
+        if (isInitial) setLoading(true);
 
-            if (error) {
-                if (retries > 0) {
-                    console.warn(`Fetch products failed, retrying... (${retries} left)`);
-                    return setTimeout(() => fetchProducts(false, retries - 1), 1000);
-                }
-                console.error('Supabase fetch error:', error);
-                throw error;
-            }
+        const tryFetch = async (retriesLeft) => {
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-            if (data && data.length > 0) {
-                setProducts(data);
-                // Permanent suppression of mocks once data is found
-                localStorage.setItem('hide_mocks', 'true');
-            } else {
-                // Check if we should still show mocks
-                const hideMocks = localStorage.getItem('hide_mocks') === 'true';
-                if (!hideMocks) {
-                    setProducts(MOCK_PRODUCTS);
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    setProducts(data);
+                    localStorage.setItem('hide_mocks', 'true');
                 } else {
-                    setProducts([]); // Truly empty store
+                    const hideMocks = localStorage.getItem('hide_mocks') === 'true';
+                    if (!hideMocks) setProducts(MOCK_PRODUCTS);
+                    else setProducts([]);
+                }
+            } catch (error) {
+                console.error(`Fetch attempt failed (${retriesLeft} retries left):`, error.message);
+
+                if (retriesLeft > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return tryFetch(retriesLeft - 1);
+                }
+
+                // Final fallback if all retries fail
+                const hideMocks = localStorage.getItem('hide_mocks') === 'true';
+                if (!hideMocks && products.length === 0) {
+                    setProducts(MOCK_PRODUCTS);
                 }
             }
-        } catch (error) {
-            console.error('Error fetching products:', error.message);
-            // Fallback to mocks ONLY if we have absolutely nothing and haven't hidden them
-            if (products.length === 0 && localStorage.getItem('hide_mocks') !== 'true') {
-                setProducts(MOCK_PRODUCTS);
-            }
-        } finally {
-            if (isInitial) setLoading(false);
-        }
+        };
+
+        await tryFetch(3);
+        if (isInitial) setLoading(false);
     };
 
     useEffect(() => {
