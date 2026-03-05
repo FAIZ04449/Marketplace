@@ -7,11 +7,12 @@ const ProductContext = createContext();
 export const ProductProvider = ({ children }) => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hasRealProducts, setHasRealProducts] = useState(false);
 
     // 1. Fetch products from Supabase
-    const fetchProducts = async () => {
+    const fetchProducts = async (isInitial = false) => {
         try {
-            setLoading(true);
+            if (isInitial) setLoading(true);
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
@@ -19,29 +20,42 @@ export const ProductProvider = ({ children }) => {
 
             if (error) throw error;
 
-            // If DB is empty, use mock products for the first time
-            if (data.length === 0) {
-                setProducts(MOCK_PRODUCTS);
-            } else {
+            if (data && data.length > 0) {
                 setProducts(data);
+                setHasRealProducts(true);
+                // Save to local storage to remember that we have real data
+                localStorage.setItem('has_real_products', 'true');
+            } else {
+                // If there's no real data, check if we should show mocks
+                const wasInitialized = localStorage.getItem('has_real_products') === 'true';
+                if (!wasInitialized) {
+                    setProducts(MOCK_PRODUCTS);
+                } else {
+                    setProducts([]); // Truly empty store
+                }
             }
         } catch (error) {
-            console.error('Error fetching products:', error.message);
-            setProducts(MOCK_PRODUCTS); // Fallback
+            console.error('Error fetching products from Supabase:', error.message);
+            // Fallback to mocks only on catastrophic failure during initial load
+            if (isInitial && products.length === 0) setProducts(MOCK_PRODUCTS);
         } finally {
-            setLoading(false);
+            if (isInitial) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchProducts();
+        fetchProducts(true);
 
-        // Optional: Realtime subscription to product updates
+        // REAL-TIME: Using a more robust channel and listener
         const subscription = supabase
-            .channel('public:products')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-                fetchProducts();
-            })
+            .channel('realtime_products')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'products' },
+                () => {
+                    console.log('Real-time product update detected');
+                    fetchProducts(false); // Silent update
+                }
+            )
             .subscribe();
 
         return () => {
@@ -51,38 +65,52 @@ export const ProductProvider = ({ children }) => {
 
     const addProduct = async (newProduct) => {
         try {
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('products')
-                .insert([newProduct])
-                .select();
+                .insert([newProduct]);
 
             if (error) throw error;
-            // State will be updated by subscription
+            // Real-time hook will trigger fetchProducts(false)
         } catch (error) {
+            console.error('Add failed:', error.message);
             alert('Error adding product: ' + error.message);
         }
     };
 
     const updateStock = async (productId, quantitySold) => {
-        try {
-            // Get current stock first
-            const product = products.find(p => p.id === productId);
-            if (!product) return;
+        // Find product to check if it's real or mock
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
 
-            const newStock = Math.max(0, product.stock - quantitySold);
+        // Mock products have numeric IDs from 1 to 10
+        const isMock = typeof productId === 'number' && productId <= 10;
 
-            const { error } = await supabase
-                .from('products')
-                .update({ stock: newStock })
-                .eq('id', productId);
-
-            if (error) throw error;
-        } catch (error) {
-            console.error('Error updating stock:', error.message);
+        if (isMock) {
+            setProducts(prev => prev.map(p =>
+                p.id === productId ? { ...p, stock: Math.max(0, p.stock - quantitySold) } : p
+            ));
+        } else {
+            try {
+                const newStock = Math.max(0, product.stock - quantitySold);
+                const { error } = await supabase
+                    .from('products')
+                    .update({ stock: newStock })
+                    .eq('id', productId);
+                if (error) throw error;
+            } catch (error) {
+                console.error('Stock update failed:', error.message);
+            }
         }
     };
 
     const deleteProduct = async (id) => {
+        const isMock = typeof id === 'number' && id <= 10;
+
+        if (isMock) {
+            setProducts(prev => prev.filter(p => p.id !== id));
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('products')
@@ -91,6 +119,7 @@ export const ProductProvider = ({ children }) => {
 
             if (error) throw error;
         } catch (error) {
+            console.error('Delete failed:', error.message);
             alert('Error deleting product: ' + error.message);
         }
     };

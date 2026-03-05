@@ -10,9 +10,9 @@ export const CartProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     // 1. Fetch orders from Supabase
-    const fetchOrders = async () => {
+    const fetchOrders = async (isInitial = false) => {
         try {
-            setLoading(true);
+            if (isInitial) setLoading(true);
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
@@ -21,21 +21,25 @@ export const CartProvider = ({ children }) => {
             if (error) throw error;
             setOrders(data || []);
         } catch (error) {
-            console.error('Error fetching orders:', error.message);
+            console.error('Error fetching orders from Supabase:', error.message);
         } finally {
-            setLoading(false);
+            if (isInitial) setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchOrders();
+        fetchOrders(true);
 
         // Realtime subscription for orders
         const subscription = supabase
-            .channel('public:orders')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-                fetchOrders();
-            })
+            .channel('realtime_orders')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'orders' },
+                () => {
+                    console.log('Real-time order update detected');
+                    fetchOrders(false); // Silent update
+                }
+            )
             .subscribe();
 
         return () => {
